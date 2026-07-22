@@ -16,10 +16,11 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent, // Required for AutoMod word filtering
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildModeration, // 👈 Required for audit log events
   ],
 });
-
 client.commands = new Collection();
 
 // --- 3. Dynamic Command Handler ---
