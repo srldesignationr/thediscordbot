@@ -1,5 +1,5 @@
 const { PermissionsBitField } = require('discord.js');
-const { containsBannedWord } = require('/../utils/wordFilter');
+const { containsBannedWord } = require('../utils/wordFilter');
 
 const LINK_REGEX = /(https?:\/\/[^\s]+)/gi;
 
