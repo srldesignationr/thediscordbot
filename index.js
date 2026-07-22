@@ -69,3 +69,29 @@ process.on('uncaughtException', (err) => {
 
 // --- 7. Login ---
 client.login(process.env.DISCORD_TOKEN);
+
+const { Client, Collection, GatewayIntentBits } = require('discord.js');
+
+// Add GuildMessages and MessageContent intents
+const client = new Client({ 
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ] 
+});
+
+// --- Dynamic Event Handler ---
+const eventsPath = path.join(__dirname, 'events');
+if (fs.existsSync(eventsPath)) {
+  const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+  for (const file of eventFiles) {
+    const filePath = path.join(eventsPath, file);
+    const event = require(filePath);
+    if (event.once) {
+      client.once(event.name, (...args) => event.execute(...args));
+    } else {
+      client.on(event.name, (...args) => event.execute(...args));
+    }
+  }
+}
