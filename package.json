@@ -1,0 +1,14 @@
+{
+  "name": "ultimate-discord-bot",
+  "version": "1.0.0",
+  "description": "An open-source, ultimate Discord bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.18.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}
