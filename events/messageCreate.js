@@ -47,7 +47,6 @@ async function deleteAndWarn(message, reason) {
   }
 }
 
-const { PermissionsBitField } = require('discord.js');
 const { containsBannedWord } = require('../utils/wordFilter');
 
 module.exports = {
