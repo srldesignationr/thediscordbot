@@ -46,3 +46,31 @@ async function deleteAndWarn(message, reason) {
     console.error('Failed to execute auto-mod action:', error);
   }
 }
+
+const { PermissionsBitField } = require('discord.js');
+const { containsBannedWord } = require('../utils/wordFilter');
+
+module.exports = {
+  name: 'messageCreate',
+  async execute(message) {
+    if (message.author.bot || !message.guild) return;
+
+    // Skip mods/admins
+    if (message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
+      return;
+    }
+
+    // Check remote blocklist
+    const isViolating = await containsBannedWord(message.content);
+    
+    if (isViolating) {
+      try {
+        await message.delete();
+        const warning = await message.channel.send(`⚠️ ${message.author}, your message contained prohibited language.`);
+        setTimeout(() => warning.delete().catch(() => {}), 5000);
+      } catch (err) {
+        console.error('Failed to handle auto-mod deletion:', err);
+      }
+    }
+  },
+};
