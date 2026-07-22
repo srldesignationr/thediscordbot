@@ -4,15 +4,22 @@ const path = require('path');
 const express = require('express');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
 
-// --- 1. Web Server for Keep-Alive ---
+// --- 1. HTTP Server for Render Keep-Alive (cron-job.org) ---
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.get('/', (req, res) => res.send('Bot status: ONLINE'));
 app.listen(PORT, () => console.log(`HTTP ping server running on port ${PORT}`));
 
-// --- 2. Discord Client Setup ---
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+// --- 2. Discord Client Setup with Required Intents ---
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent, // Required for AutoMod word filtering
+  ],
+});
+
 client.commands = new Collection();
 
 // --- 3. Dynamic Command Handler ---
@@ -22,7 +29,7 @@ if (fs.existsSync(foldersPath)) {
   for (const folder of commandFolders) {
     const commandsPath = path.join(foldersPath, folder);
     const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-    
+
     for (const file of commandFiles) {
       const filePath = path.join(commandsPath, file);
       const command = require(filePath);
@@ -31,57 +38,10 @@ if (fs.existsSync(foldersPath)) {
       }
     }
   }
+  console.log(`Loaded ${client.commands.size} slash commands.`);
 }
 
-// --- 4. Event: Ready ---
-client.once('ready', () => {
-  console.log(`Logged in securely as ${client.user.tag}`);
-});
-
-// --- 5. Event: Interaction Execution ---
-client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-
-  const command = interaction.client.commands.get(interaction.commandName);
-  if (!command) return;
-
-  try {
-    await command.execute(interaction);
-  } catch (error) {
-    console.error(`Error executing ${interaction.commandName}:`, error);
-    const errorMessage = { content: 'An unexpected error occurred while running this command.', flags: 64 }; // Ephemeral flag
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(errorMessage);
-    } else {
-      await interaction.reply(errorMessage);
-    }
-  }
-});
-
-// --- 6. Security & Process Crash Shields ---
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception thrown:', err);
-});
-
-// --- 7. Login ---
-client.login(process.env.DISCORD_TOKEN);
-
-const { Client, Collection, GatewayIntentBits } = require('discord.js');
-
-// Add GuildMessages and MessageContent intents
-const client = new Client({ 
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ] 
-});
-
-// --- Dynamic Event Handler ---
+// --- 4. Dynamic Event Handler (AutoMod, AuditLogger, Ready, etc.) ---
 const eventsPath = path.join(__dirname, 'events');
 if (fs.existsSync(eventsPath)) {
   const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
@@ -94,4 +54,46 @@ if (fs.existsSync(eventsPath)) {
       client.on(event.name, (...args) => event.execute(...args));
     }
   }
+  console.log(`Loaded ${eventFiles.length} event listeners.`);
 }
+
+// --- 5. Interaction Event (Slash Command Execution) ---
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isChatInputCommand()) return;
+
+  const command = interaction.client.commands.get(interaction.commandName);
+  if (!command) return;
+
+  try {
+    await command.execute(interaction);
+  } catch (error) {
+    console.error(`Error executing command /${interaction.commandName}:`, error);
+    const errorMessage = {
+      content: 'An unexpected error occurred while executing this command.',
+      flags: 64, // Ephemeral flag (only visible to user)
+    };
+
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp(errorMessage);
+    } else {
+      await interaction.reply(errorMessage);
+    }
+  }
+});
+
+// --- 6. Ready Event ---
+client.once('ready', () => {
+  console.log(`Successfully logged in as ${client.user.tag}!`);
+});
+
+// --- 7. Security & Crash Shields (Prevents process death on Render) ---
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Promise Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception thrown:', err);
+});
+
+// --- 8. Bot Login ---
+client.login(process.env.DISCORD_TOKEN);
